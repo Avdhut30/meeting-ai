@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "infra: up (db+redis)",
+      "type": "shell",
+      "command": "docker compose up -d db redis",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "db: migrate",
+      "type": "shell",
+      "command": "./.venv/Scripts/python -m alembic upgrade head",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "api: run",
+      "type": "shell",
+      "command": "./.venv/Scripts/python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8010",
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "worker: run",
+      "type": "shell",
+      "command": "./.venv/Scripts/python -m celery -A backend.app.worker.celery_app.celery_app worker --pool=solo --loglevel=info",
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "tests: run",
+      "type": "shell",
+      "command": "./.venv/Scripts/python -m pytest -q",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

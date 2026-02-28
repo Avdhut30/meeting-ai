@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meeting AI</title>
+  <link rel="icon" type="image/svg+xml" href="/app/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+  <div class="background" aria-hidden="true"></div>
+  <main class="layout">
+    <header class="hero card">
+      <div>
+        <p class="eyebrow">MVP</p>
+        <h1>Meeting AI</h1>
+        <p class="subtle">Register, upload meeting audio, generate transcript + summary, and review key points, decisions, action items, and risks.</p>
+      </div>
+      <div class="user-chip" id="userChip">Signed out</div>
+    </header>
+
+    <section class="card" aria-labelledby="auth-title">
+      <div class="section-head">
+        <h2 id="auth-title">Authentication</h2>
+        <button type="button" class="ghost danger" id="logoutBtn">Log out</button>
+      </div>
+      <form id="authForm" class="grid-form">
+        <label>
+          Email
+          <input id="emailInput" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+        </label>
+        <label>
+          Password
+          <input id="passwordInput" name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="Minimum 8 characters">
+        </label>
+        <div class="button-row">
+          <button type="button" id="registerBtn">Register</button>
+          <button type="button" id="loginBtn" class="accent">Log in</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="meetings-title">
+      <div class="section-head">
+        <h2 id="meetings-title">Meetings</h2>
+        <button type="button" class="ghost" id="refreshBtn">Refresh</button>
+      </div>
+
+      <form id="createMeetingForm" class="inline-form">
+        <label class="grow">
+          <span class="sr-only">Meeting title</span>
+          <input id="meetingTitleInput" name="title" type="text" required maxlength="255" placeholder="New meeting title">
+        </label>
+        <button type="submit" class="accent">Create Meeting</button>
+      </form>
+
+      <div class="split">
+        <div>
+          <h3 class="subheading">List</h3>
+          <ul id="meetingList" class="meeting-list" aria-live="polite"></ul>
+        </div>
+        <div>
+          <h3 class="subheading">Details</h3>
+          <div id="meetingDetails" class="details empty">
+            Select a meeting to view details.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="result-title">
+      <h2 id="result-title">Activity</h2>
+      <pre id="statusLog" class="status-log" aria-live="polite">Ready.</pre>
+    </section>
+  </main>
+
+  <template id="meetingDetailsTemplate">
+    <div class="details-panel">
+      <div class="status-track-wrap">
+        <ol class="status-track" data-field="status_track" aria-label="Meeting processing status">
+          <li data-step="created">Created</li>
+          <li data-step="uploaded">Uploaded</li>
+          <li data-step="processing">Processing</li>
+          <li data-step="processed">Processed</li>
+        </ol>
+        <p class="status-note" data-field="status_note"></p>
+      </div>
+
+      <div class="detail-grid">
+        <div><span class="label">ID</span><span data-field="id"></span></div>
+        <div><span class="label">Status</span><span data-field="status"></span></div>
+        <div><span class="label">Created</span><span data-field="created_at"></span></div>
+        <div><span class="label">Started</span><span data-field="processing_started_at"></span></div>
+        <div><span class="label">Processed</span><span data-field="processed_at"></span></div>
+        <div><span class="label">Task ID</span><span data-field="processing_task_id"></span></div>
+        <div><span class="label">Filename</span><span data-field="original_filename"></span></div>
+        <div><span class="label">Size</span><span data-field="file_size_bytes"></span></div>
+      </div>
+
+      <form class="upload-form" data-role="upload-form">
+        <p class="upload-hint" data-field="upload_hint"></p>
+        <label>
+          Audio File
+          <input type="file" name="audio" accept="audio/*,.wav" required>
+        </label>
+        <div class="button-row">
+          <button type="submit">Upload Audio</button>
+          <button type="button" class="accent" data-role="process-btn">Process Meeting</button>
+          <button type="button" class="ghost" data-role="download-btn">Download Audio</button>
+        </div>
+      </form>
+
+      <div class="details-tabs">
+        <div class="tab-list" role="tablist" aria-label="Meeting detail sections">
+          <button type="button" role="tab" class="tab-btn active" data-role="tab-btn" data-tab="overview" aria-selected="true">Overview</button>
+          <button type="button" role="tab" class="tab-btn" data-role="tab-btn" data-tab="insights" aria-selected="false">Insights</button>
+          <button type="button" role="tab" class="tab-btn" data-role="tab-btn" data-tab="transcript" aria-selected="false">Transcript</button>
+          <button type="button" role="tab" class="tab-btn" data-role="tab-btn" data-tab="raw" aria-selected="false">Raw Data</button>
+        </div>
+
+        <section class="tab-panel active" data-role="tab-panel" data-tab-panel="overview">
+          <div class="text-panels">
+            <div>
+              <h4>Summary</h4>
+              <pre data-field="summary" class="text-box"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-role="tab-panel" data-tab-panel="insights" hidden>
+          <div class="insight-panels">
+            <div>
+              <h4>Key Points</h4>
+              <ul data-field="key_points" class="list-box"></ul>
+            </div>
+            <div>
+              <h4>Decisions</h4>
+              <ul data-field="decisions" class="list-box"></ul>
+            </div>
+            <div class="action-table-card">
+              <h4>Action Items</h4>
+              <div class="action-table-wrap">
+                <table class="action-table" data-field="action_items_table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Task</th>
+                      <th scope="col">Owner</th>
+                      <th scope="col">Due Date</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h4>Risks</h4>
+              <ul data-field="risks" class="list-box"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-role="tab-panel" data-tab-panel="transcript" hidden>
+          <div class="transcript-head">
+            <label>
+              Search Transcript
+              <input
+                type="text"
+                data-role="transcript-search"
+                placeholder="Type to find text in transcript"
+                autocomplete="off"
+              >
+            </label>
+            <span class="transcript-match-count" data-field="transcript_match_count"></span>
+          </div>
+
+          <div class="timeline-head">
+            <h4>Speaker Timeline</h4>
+            <label>
+              Speaker Filter
+              <select data-role="speaker-filter">
+                <option value="">All speakers</option>
+              </select>
+            </label>
+          </div>
+          <div class="timeline-list" data-field="timeline_list"></div>
+
+          <div>
+            <h4>Transcript</h4>
+            <pre data-field="transcript" class="text-box tall"></pre>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-role="tab-panel" data-tab-panel="raw" hidden>
+          <div>
+            <h4>Raw Meeting Payload</h4>
+            <pre data-field="raw_json" class="text-box tall"></pre>
+          </div>
+        </section>
+      </div>
+
+      <div class="error-box" data-field="error_message"></div>
+    </div>
+  </template>
+
+  <script src="/app/app.js" defer></script>
+</body>
+</html>
