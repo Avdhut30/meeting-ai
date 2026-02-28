@@ -81,6 +81,55 @@ Run worker (new terminal):
 celery -A backend.app.worker.celery_app.celery_app worker --pool=solo --loglevel=info
 ```
 
+## Deploy (Docker, VPS)
+
+This is the fastest production path for this project.
+
+1. Provision a Linux VPS (Ubuntu 22.04+), install Docker + Docker Compose plugin.
+2. Clone this repo on the server.
+3. Create production env file from template.
+4. Start the production stack.
+
+Commands:
+
+```bash
+git clone <your-repo-url>
+cd meeting-ai
+
+cp .env.production.example .env.production
+# edit secrets before running
+nano .env.production
+
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+```
+
+App URLs (default):
+
+- Frontend/API: `http://<server-ip>:8010/app/`
+- API docs: `http://<server-ip>:8010/docs`
+
+Useful ops:
+
+```bash
+# Logs
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f api
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f worker
+
+# Apply migrations manually (if needed)
+docker compose --env-file .env.production -f docker-compose.prod.yml exec api alembic upgrade head
+
+# Restart services
+docker compose --env-file .env.production -f docker-compose.prod.yml restart api worker
+```
+
+Notes:
+
+- `docker-compose.prod.yml` runs `api`, `worker`, `postgres`, and `redis`.
+- API auto-runs migrations on startup (`alembic upgrade head`).
+- Set a strong `SECRET_KEY` and `POSTGRES_PASSWORD` in `.env.production`.
+- For public production traffic, put Nginx/Caddy in front of port `8010` with HTTPS.
+
 ## Run Tests
 
 From the project root:

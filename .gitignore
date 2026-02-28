@@ -12,6 +12,7 @@ env/
 
 backend/.env
 .env
+.env.production
 
 backend/uploads/
 *.log
