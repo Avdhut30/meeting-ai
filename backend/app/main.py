@@ -268,7 +268,7 @@ def health():
     return {"status": "ok", "app": "meeting-ai", "version": app.version}
 
 
-@app.get("/", include_in_schema=False)
+@app.api_route("/", include_in_schema=False, methods=["GET", "HEAD"])
 def root_redirect():
     return RedirectResponse(url="/app/")
 

@@ -16,4 +16,4 @@ COPY . /app
 
 EXPOSE 8010
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8010"]
+CMD ["sh", "-c", "python -m alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8010}"]
