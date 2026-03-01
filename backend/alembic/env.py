@@ -1,7 +1,6 @@
-
-import os
 from dotenv import load_dotenv
 from backend.app.core.db import Base
+from backend.app.core.config import settings
 from backend.app import models  # IMPORTANT: ensures models are registered
 
 from logging.config import fileConfig
@@ -19,9 +18,7 @@ load_dotenv("backend/.env")
 # access to the values within the .ini file in use.
 config = context.config
 
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+config.set_main_option("sqlalchemy.url", settings.resolved_database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

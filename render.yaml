@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: meeting-ai
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python -m alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: PROCESSING_PROVIDER
+        value: placeholder
+      - key: PROCESSING_FALLBACK_TO_PLACEHOLDER
+        value: "true"
+      - key: PROCESS_SYNC_WHEN_PROVIDER_PLACEHOLDER
+        value: "true"
+      - key: CELERY_FALLBACK_TO_INLINE
+        value: "true"

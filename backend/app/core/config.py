@@ -1,9 +1,24 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+def _normalize_database_url(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if cleaned.startswith("postgres://"):
+        return "postgresql+psycopg2://" + cleaned[len("postgres://") :]
+    return cleaned
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file="backend/.env", extra="ignore")
 
-    DATABASE_URL: str
+    DATABASE_URL: str | None = None
+    RENDER_DATABASE_URL: str | None = None
+    INTERNAL_DATABASE_URL: str | None = None
+    POSTGRES_URL: str | None = None
     UPLOADS_DIR: str = "backend/uploads"
     SECRET_KEY: str = "change-this-in-production"
     ALGORITHM: str = "HS256"
@@ -45,5 +60,21 @@ class Settings(BaseSettings):
             for mime_type in self.UPLOAD_ALLOWED_MIME_TYPES.split(",")
             if mime_type.strip()
         }
+
+    @property
+    def resolved_database_url(self) -> str:
+        for candidate in (
+            self.DATABASE_URL,
+            self.RENDER_DATABASE_URL,
+            self.INTERNAL_DATABASE_URL,
+            self.POSTGRES_URL,
+        ):
+            normalized = _normalize_database_url(candidate)
+            if normalized is not None:
+                return normalized
+
+        # Render-safe fallback for first deploy demos.
+        # For production durability, explicitly set DATABASE_URL.
+        return "sqlite:///./backend/local.db"
 
 settings = Settings()

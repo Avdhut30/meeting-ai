@@ -133,6 +133,43 @@ docker compose --env-file .env.production -f docker-compose.prod.yml exec api al
 docker compose --env-file .env.production -f docker-compose.prod.yml restart api worker
 ```
 
+## Free Deployment (Render)
+
+This project can run on Render free tier (HTTPS included).
+
+### 1) Create Web Service from GitHub repo
+
+- Runtime: `Python`
+- Build command:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+- Start command:
+
+```bash
+python -m alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+```
+
+You can also use the provided `render.yaml` blueprint.
+
+### 2) Set required environment variables in Render
+
+- `DATABASE_URL` (required for persistent DB, e.g. Neon PostgreSQL URL)
+- `SECRET_KEY` (strong random string)
+- `PROCESSING_PROVIDER=placeholder`
+- `PROCESS_SYNC_WHEN_PROVIDER_PLACEHOLDER=true`
+- `CELERY_FALLBACK_TO_INLINE=true`
+
+Optional:
+- `OPENAI_API_KEY` (if `PROCESSING_PROVIDER=openai`)
+
+### 3) Open your live app
+
+- `https://<your-render-service>.onrender.com/app/`
+- `https://<your-render-service>.onrender.com/docs`
+
 ## Processing Modes
 
 - `placeholder`: local mock output, no external AI required
@@ -187,6 +224,8 @@ python -m pytest -q
   - check `redis` and `worker` are running
 - OpenAI errors:
   - verify `OPENAI_API_KEY` and provider env settings
+- Render startup error: `DATABASE_URL Field required`:
+  - set `DATABASE_URL` in Render service environment variables
 
 ## Production Notes
 
