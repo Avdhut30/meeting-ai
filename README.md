@@ -1,217 +1,195 @@
-# Meeting AI (MVP)
+# Meeting AI
 
-Meeting AI is a FastAPI + PostgreSQL app for:
+Meeting AI is a full-stack application for turning meeting audio into structured outcomes.
 
-- user registration/login (JWT auth)
-- meeting creation
-- audio upload per meeting
-- durable queued processing (Celery + Redis)
-- structured insights extraction (key points, decisions, action items, risks)
-- speaker timeline segments (timestamped transcript chunks)
-- execution tasks (create/import/update/delete meeting follow-up tasks)
-- viewing results in a built-in frontend (`/app`)
+It supports:
+- User authentication
+- Meeting creation and audio upload
+- Asynchronous processing with Celery + Redis
+- Transcript + summary generation
+- Structured insights (key points, decisions, action items, risks)
+- Speaker timeline segments
+- Task execution workflow (create, import, update, delete follow-up tasks)
 
-The app runs in two processing modes:
+## Tech Stack
 
-- `placeholder` (default): no external API required
-- `openai`: real transcription + structured summary if configured
+- Backend: FastAPI, SQLAlchemy, Alembic
+- Database: PostgreSQL
+- Queue: Celery + Redis
+- Frontend: Vanilla JS + static assets served by FastAPI
+- Optional AI provider: OpenAI
 
-## Project Structure
+## Repository Structure
 
 ```text
 backend/
   app/
-    core/        # config, db, auth helpers
+    core/        # config, db, auth
     models/      # SQLAlchemy models
     schemas/     # Pydantic schemas
-    services/    # processing logic (placeholder/openai)
-    worker/      # Celery app + task workers
-  alembic/       # database migrations
-frontend/        # static UI served by FastAPI at /app
+    services/    # processing logic
+    worker/      # Celery app + tasks
+  alembic/       # DB migrations
+frontend/        # static UI at /app
 docker-compose.yml
+docker-compose.prod.yml
 alembic.ini
 ```
 
-## Local Run (Windows PowerShell)
+## Local Development
 
-From the project root:
+### Prerequisites
 
-```powershell
-cd "C:\Users\Avdhut Shinde\AI Projects\meeting-ai"
+- Python 3.11+
+- Docker Desktop (or Docker Engine + Compose)
 
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -r backend\requirements.txt
-
-Copy-Item backend\.env.example backend\.env
-docker compose up -d db redis
-alembic upgrade head
-
-# Terminal 1: API
-uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8010
-
-# Terminal 2: Celery worker
-celery -A backend.app.worker.celery_app.celery_app worker --pool=solo --loglevel=info
-```
-
-Open:
-
-- Frontend: `http://127.0.0.1:8010/app/`
-- API docs: `http://127.0.0.1:8010/docs`
-
-## Daily Run
-
-```powershell
-cd "C:\Users\Avdhut Shinde\AI Projects\meeting-ai"
-.\.venv\Scripts\Activate.ps1
-docker compose up -d db redis
-```
-
-Run API:
-
-```powershell
-uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8010
-```
-
-Run worker (new terminal):
-
-```powershell
-celery -A backend.app.worker.celery_app.celery_app worker --pool=solo --loglevel=info
-```
-
-## Deploy (Docker, VPS)
-
-This is the fastest production path for this project.
-
-1. Provision a Linux VPS (Ubuntu 22.04+), install Docker + Docker Compose plugin.
-2. Clone this repo on the server.
-3. Create production env file from template.
-4. Start the production stack.
-
-Commands:
+### 1) Setup
 
 ```bash
-git clone <your-repo-url>
-cd meeting-ai
+python -m venv .venv
+```
 
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Git Bash:
+
+```bash
+source .venv/Scripts/activate
+```
+
+Install dependencies:
+
+```bash
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+```
+
+Create local env file:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+### 2) Start dependencies + migrate DB
+
+```bash
+docker compose up -d db redis
+python -m alembic upgrade head
+```
+
+### 3) Run app services
+
+Terminal 1 (API):
+
+```bash
+uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8010
+```
+
+Terminal 2 (Worker):
+
+```bash
+celery -A backend.app.worker.celery_app.celery_app worker --pool=solo --loglevel=info
+```
+
+### 4) Open app
+
+- UI: `http://127.0.0.1:8010/app/`
+- API docs: `http://127.0.0.1:8010/docs`
+
+## Production Deployment (Docker Compose)
+
+### 1) Prepare environment file
+
+```bash
 cp .env.production.example .env.production
-# edit secrets before running
-nano .env.production
+```
 
+Edit `.env.production` and set at least:
+- `POSTGRES_PASSWORD`
+- `SECRET_KEY`
+- `OPENAI_API_KEY` (if using `PROCESSING_PROVIDER=openai`)
+
+### 2) Start production stack
+
+```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
 ```
 
-App URLs (default):
-
-- Frontend/API: `http://<server-ip>:8010/app/`
+Default URLs:
+- UI: `http://<server-ip>:8010/app/`
 - API docs: `http://<server-ip>:8010/docs`
 
-Useful ops:
+Useful commands:
 
 ```bash
-# Logs
 docker compose --env-file .env.production -f docker-compose.prod.yml logs -f api
 docker compose --env-file .env.production -f docker-compose.prod.yml logs -f worker
-
-# Apply migrations manually (if needed)
 docker compose --env-file .env.production -f docker-compose.prod.yml exec api alembic upgrade head
-
-# Restart services
 docker compose --env-file .env.production -f docker-compose.prod.yml restart api worker
 ```
 
-Notes:
+## Processing Modes
 
-- `docker-compose.prod.yml` runs `api`, `worker`, `postgres`, and `redis`.
-- API auto-runs migrations on startup (`alembic upgrade head`).
-- Set a strong `SECRET_KEY` and `POSTGRES_PASSWORD` in `.env.production`.
-- For public production traffic, put Nginx/Caddy in front of port `8010` with HTTPS.
+- `placeholder`: local mock output, no external AI required
+- `openai`: real transcription + structured summary
 
-## Run Tests
+Set in env:
 
-From the project root:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pytest -q
+```env
+PROCESSING_PROVIDER=placeholder
 ```
 
-## Using OpenAI Processing (Optional)
-
-Edit `backend/.env`:
+or
 
 ```env
 PROCESSING_PROVIDER=openai
-OPENAI_API_KEY=your_api_key_here
-PROCESSING_FALLBACK_TO_PLACEHOLDER=true
+OPENAI_API_KEY=your_key
 ```
 
-Behavior:
+## API Overview
 
-- If OpenAI succeeds, transcript and summary come from the provider.
-- If OpenAI fails and fallback is enabled, placeholder output is stored and the error is logged.
+Authentication:
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /me`
 
-## Processing Flow
+Meetings:
+- `POST /meetings`
+- `GET /meetings`
+- `GET /meetings/{meeting_id}`
+- `POST /meetings/{meeting_id}/upload`
+- `POST /meetings/{meeting_id}/process`
+- `GET /meetings/{meeting_id}/download`
 
-1. Create a meeting
-2. Upload audio (`.wav` works well for metadata detection)
-3. Click `Process Meeting`
-4. Backend sets status to `processing`, records `processing_task_id`, and enqueues Celery task
-5. Worker processes audio and writes `processed` or `error` back to DB
-6. Frontend auto-polls until status becomes `processed` or `error`
-
-## Structured Outputs
-
-Each processed meeting now stores:
-
-- `summary`: concise paragraph summary
-- `key_points`: bullet list of major discussion points
-- `decisions`: explicit decisions made in the meeting
-- `action_items`: task list with optional owner and due date
-- `risks`: known blockers or risks
-- `transcript_segments`: timestamped timeline entries with speaker + text
-
-## Task Execution APIs
-
-Task workflow endpoints (all JWT-protected and meeting-owner scoped):
-
+Tasks:
 - `GET /meetings/{meeting_id}/tasks`
 - `POST /meetings/{meeting_id}/tasks`
 - `PATCH /meetings/{meeting_id}/tasks/{task_id}`
 - `DELETE /meetings/{meeting_id}/tasks/{task_id}`
 - `POST /meetings/{meeting_id}/tasks/import-action-items`
 
-## Upload Validation Rules
+## Testing
 
-By default, upload API enforces:
-
-- max size: `25 MB` (`UPLOAD_MAX_SIZE_BYTES`)
-- allowed extensions: `.wav,.mp3,.m4a,.mp4,.mpeg,.mpga,.webm,.ogg`
-- allowed MIME types: configured by `UPLOAD_ALLOWED_MIME_TYPES`
-- empty files are rejected
-
-## Notes / Limitations
-
-- Celery worker must be running for processing to complete.
-- If Redis/Celery is down and `CELERY_FALLBACK_TO_INLINE=true`, processing falls back to inline mode.
-- If `PROCESSING_PROVIDER=placeholder` and `PROCESS_SYNC_WHEN_PROVIDER_PLACEHOLDER=true`, processing is immediate inline by default.
-- Audio files are stored locally under `backend/uploads/`.
-- `placeholder` mode generates sample transcript/summary content plus file metadata.
+```bash
+python -m pytest -q
+```
 
 ## Troubleshooting
 
-If login/register fails:
+- DB schema errors (`UndefinedColumn`):
+  - run `python -m alembic upgrade head`
+- Processing stuck:
+  - check `redis` and `worker` are running
+- OpenAI errors:
+  - verify `OPENAI_API_KEY` and provider env settings
 
-```powershell
-docker compose ps
-alembic upgrade head
-```
+## Production Notes
 
-If PowerShell blocks venv activation:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-```
+- Use strong secrets in production.
+- Put Nginx/Caddy in front of the app for HTTPS.
+- Keep PostgreSQL/Redis ports private (not publicly exposed).
