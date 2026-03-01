@@ -2,6 +2,10 @@
 
 Meeting AI is a full-stack application for turning meeting audio into structured outcomes.
 
+## Live Demo
+
+- App: `https://meeting-ai-45ug.onrender.com/app/`
+
 It supports:
 - User authentication
 - Meeting creation and audio upload
